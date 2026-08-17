@@ -1,0 +1,36 @@
+[project]
+name = "bub-slack"
+version = "0.1.4"
+description = "Bub Slack channel with passive Nowledge Mem capture"
+readme = "README.md"
+authors = [
+    { name = "yiling" }
+]
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "bub>=0.3.0a1",
+    "nowledge-mem-bub>=0.7.3",
+    "slack-sdk>=3.30.0",
+    "aiohttp>=3.10.0",
+    "loguru",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+]
+
+[project.entry-points.bub]
+slack = "bub_slack.plugin"
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["bub_slack", "skills.slack"]
+source-include = ["src/skills/slack/SKILL.md", "src/skills/slack/scripts/*.py"]
