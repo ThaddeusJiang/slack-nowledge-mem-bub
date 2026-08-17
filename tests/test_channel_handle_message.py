@@ -47,13 +47,14 @@ async def test_plain_message_is_captured_without_entering_agent(
     captures: list[dict[str, Any]] = []
 
     async def _capture(**kwargs: Any) -> None:
-        captures.append(kwargs["event"])
+        captures.append(kwargs)
 
     monkeypatch.setattr("bub_slack.channel.capture_to_mem", _capture)
     event = _event(text="team decision", ts="100.1")
     await channel._handle_message(event)
 
-    assert captures == [event]
+    assert [item["event"] for item in captures] == [event]
+    assert captures[0]["resolve_mentions"] == channel._resolve_user_mentions
     assert captured == []
 
 

@@ -6,12 +6,15 @@ refs
 - https://github.com/nowledge-co/community/blob/main/nowledge-mem-bub-plugin
 
 > 实现校正（Nowledge Mem API 0.10.63）：Passive Capture 不再逐条调用
-> `POST /memories`。每个 Slack Channel 映射为固定的 Mem Thread
-> `slack:{channel_id}`，用户消息与 Bub Agent outbound reply 都通过
-> `/threads/{thread_id}/append` 追加；不存在时创建 Thread。Slack
-> message/thread/user id 与 permalink 保存在 Message metadata。Slack `<@USER_ID>`
-> 通过 `users.info` 转为当前显示名后写入 content。部署时设置
-> `NMEM_SESSION_DIGEST=0`，避免 plugin 另外创建 `source=bub` Thread。
+> `POST /memories`。Slack Channel 顶层消息写入固定 Mem Thread
+> `slack:{channel_id}`；Slack Thread 中的 user / Bot reply 写入独立 Mem Thread
+> `slack:{channel_id}:{thread_ts}`。根消息先写入 Channel Mem Thread；出现第一条
+> reply 时，通过 Slack `conversations.replies` 读取 root，并用 `[root, reply]`
+> 创建独立 Thread，后续 reply 再通过 `/threads/{thread_id}/append` 追加。Slack
+> message/thread/user id 与 permalink 保存在
+> Message metadata。Slack `<@USER_ID>` 通过 `users.info` 转为当前显示名后写入
+> content。部署时设置 `NMEM_SESSION_DIGEST=0`，避免 plugin 另外创建
+> `source=bub` Thread。
 
 ## 1. 目标
 

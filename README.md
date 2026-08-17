@@ -13,23 +13,29 @@
 
 | Slack 消息 | 更新 Mem Thread | 进入 Bub Agent |
 | --- | --- | --- |
-| Channel 普通消息 | 是 | 否 |
-| Channel `@Bot` | 是 | 是 |
-| DM | 是 | 是（沿用 bub-slack 行为） |
-| Bot 已参与的 thread reply | 是 | 是（沿用 bub-slack 行为） |
-| Bub Agent outbound reply | 是，`role=assistant` | — |
+| Channel 顶层普通消息 | 是，Channel Mem Thread | 否 |
+| Channel 顶层 `@Bot` | 是，Channel Mem Thread | 是 |
+| Slack Thread 中的 user reply | 是，独立 Mem Thread | Bot 已参与或被 mention 时是 |
+| Slack Thread 中的 Bot reply | 是，与 user reply 相同的 Mem Thread，`role=assistant` | — |
+| DM 顶层消息 | 是，Channel Mem Thread | 是（沿用 bub-slack 行为） |
 | Socket 回流的 bot/self/subtype 消息 | 否，避免重复 | 否 |
 | allow-list 外消息 | 否 | 否 |
 
-每个 Slack Channel 固定映射到一个 Mem Thread：
+Slack 顶层消息固定写入 Channel Mem Thread：
 
 ```text
 slack:{channel_id}
 ```
 
-用户消息和 Bub Agent 回复都使用 `POST /threads/{thread_id}/append` 追加；Thread 不存在时才用当前消息创建。Slack `ts` 用作 idempotency key。Message metadata 保存 `source_message_id`、`slack_channel_id`、`slack_thread_ts`、`slack_user_id` 和可选的 `original_url`。Thread 来源始终是 `slack`。
+Slack Thread reply（user 或 Bot）按 Slack Thread root 单独映射：
 
-Slack event 中的 `<@USER_ID>` 会通过 `users.info` 转换为 Slack 当前显示名（例如 `@tj2`）后再写入 Mem 和交给 Agent。解析结果在进程内缓存；API 失败时保留原始 token。
+```text
+slack:{channel_id}:{thread_ts}
+```
+
+根消息首先保存在 Channel Mem Thread；出现第一条 reply 时，通过 Slack `conversations.replies` 读取根消息，并以 `[root, first reply]` 创建独立 Mem Thread，使 Thread 上下文完整。之后的 user / Bot reply 只追加到该独立 Thread。用户消息和 Bub Agent 回复都使用 `POST /threads/{thread_id}/append`；Slack `ts` 用作 idempotency key。Message metadata 保存 `source_message_id`、`slack_channel_id`、`slack_thread_ts`、`slack_user_id` 和可选的 `original_url`；独立 Thread metadata 额外保存 `slack_thread_ts`。Thread 来源始终是 `slack`。
+
+Slack event 中的 `<@USER_ID>` 会通过 `users.info` 转换为 Slack 当前显示名（例如 `@tj2`）后再写入 Mem 和交给 Agent；首次创建独立 Mem Thread 时回填的 root 也复用同一解析路径。解析结果在进程内缓存；API 失败时保留原始 token。
 
 Passive Capture 是 best-effort：permalink 或 Mem 写入失败只记录日志，不会阻止已 `@Bot` 的消息进入 Agent。
 
@@ -80,9 +86,10 @@ uv run bub onboard
 ```
 
 1. 在 Channel 发送不含 `@Bot` 的唯一文本：Bot 不应回复；`nmem t show slack:{channel_id}` 应包含该消息。
-2. 发送 `@Bot 刚才记录了什么？`：消息应进入 Agent 并回复；同一个 Mem Thread 应新增 `role=assistant` 消息，不应新增 `source=bub` Thread。
-3. 在同一 Channel 的不同 Slack Thread 发送消息：都应追加到同一个 `slack:{channel_id}` Mem Thread。
-4. 检查 Message 的 `metadata.original_url` 可返回原 Slack Message。
+2. 对该消息创建 Slack Thread 并回复：`nmem t show slack:{channel_id}:{thread_ts}` 的第一、二条消息应依次为 root 和 first reply；Channel Mem Thread 不应重复新增 reply。
+3. 在 Slack Thread 中 `@Bot`：user reply 和 Agent 的 `role=assistant` reply 应写入同一个独立 Mem Thread，不应新增 `source=bub` Thread。
+4. 在同一 Channel 的两个 Slack Thread 回复：应创建两个不同的 Mem Thread。
+5. 检查 Message 的 `metadata.original_url` 可返回原 Slack Message。
 
 ## 开发
 

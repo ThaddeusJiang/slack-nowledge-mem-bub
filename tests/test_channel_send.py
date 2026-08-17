@@ -154,6 +154,7 @@ async def test_send_captures_assistant_in_same_slack_thread(monkeypatch) -> None
             "thread_ts": "12345.67",
             "web_client": ch._web_client,
             "mem_client": ch._mem_client,
+            "resolve_mentions": ch._resolve_user_mentions,
         }
     ]
 

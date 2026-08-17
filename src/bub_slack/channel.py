@@ -264,6 +264,7 @@ class SlackChannel(Channel):
             event={**event, "text": resolved_text},
             web_client=self._web_client,
             mem_client=self._mem_client,
+            resolve_mentions=self._resolve_user_mentions,
         )
 
         mention = f"<@{self._bot_user_id}>" if self._bot_user_id else ""
@@ -381,6 +382,7 @@ class SlackChannel(Channel):
                 thread_ts=thread_ts,
                 web_client=self._web_client,
                 mem_client=self._mem_client,
+                resolve_mentions=self._resolve_user_mentions,
             )
 
         # First reply for this session: swap the inbound ack :hourglass: →

@@ -23,6 +23,25 @@ class FakeWebClient:
         return {"permalink": "https://workspace.slack.com/archives/C1/p1001"}
 
 
+class FakeThreadWebClient(FakeWebClient):
+    async def conversations_replies(self, **kwargs: Any) -> dict[str, Any]:
+        assert kwargs == {
+            "channel": "C1",
+            "ts": "100.1",
+            "limit": 1,
+            "inclusive": True,
+        }
+        return {
+            "messages": [
+                {
+                    "text": "<@UBOT> thread root",
+                    "user": "UROOT",
+                    "ts": "100.1",
+                }
+            ]
+        }
+
+
 class FakeMemClient:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
@@ -48,7 +67,7 @@ class RecordingMemClient(NowledgeMemClient):
 
 
 @pytest.mark.asyncio
-async def test_capture_appends_message_to_channel_thread() -> None:
+async def test_capture_appends_top_level_message_to_channel_thread() -> None:
     mem = FakeMemClient()
     await capture_to_mem(
         event={
@@ -56,7 +75,6 @@ async def test_capture_appends_message_to_channel_thread() -> None:
             "channel": "C1",
             "user": "U1",
             "ts": "0.123456",
-            "thread_ts": "0.000001",
         },
         web_client=FakeWebClient(),
         mem_client=mem,  # type: ignore[arg-type]
@@ -66,6 +84,7 @@ async def test_capture_appends_message_to_channel_thread() -> None:
         {
             "thread_id": "slack:C1",
             "title": "Slack C1",
+            "thread_metadata": {"slack_channel_id": "C1"},
             "message": {
                 "role": "user",
                 "content": "customer approved launch",
@@ -74,18 +93,19 @@ async def test_capture_appends_message_to_channel_thread() -> None:
                     "source": "slack",
                     "source_message_id": "0.123456",
                     "slack_channel_id": "C1",
-                    "slack_thread_ts": "0.000001",
+                    "slack_thread_ts": "0.123456",
                     "slack_user_id": "U1",
                     "original_url": "https://workspace.slack.com/archives/C1/p1001",
                 },
             },
             "idempotency_key": "slack:C1:0.123456",
+            "initial_messages": None,
         }
     ]
 
 
 @pytest.mark.asyncio
-async def test_assistant_message_uses_same_channel_thread() -> None:
+async def test_assistant_reply_uses_slack_thread() -> None:
     mem = FakeMemClient()
     await capture_slack_message(
         role="assistant",
@@ -98,13 +118,52 @@ async def test_assistant_message_uses_same_channel_thread() -> None:
         mem_client=mem,  # type: ignore[arg-type]
     )
 
-    assert mem.appends[0]["thread_id"] == "slack:C1"
+    assert mem.appends[0]["thread_id"] == "slack:C1:1.0"
+    assert mem.appends[0]["thread_metadata"] == {
+        "slack_channel_id": "C1",
+        "slack_thread_ts": "1.0",
+    }
     assert mem.appends[0]["message"]["role"] == "assistant"
     assert mem.appends[0]["message"]["metadata"]["source"] == "slack"
 
 
 @pytest.mark.asyncio
-async def test_different_slack_threads_share_channel_thread() -> None:
+async def test_user_and_assistant_replies_share_mem_thread() -> None:
+    mem = FakeMemClient()
+    await capture_to_mem(
+        event={
+            "text": "question",
+            "channel": "C1",
+            "user": "U1",
+            "ts": "101.1",
+            "thread_ts": "100.1",
+        },
+        web_client=None,
+        mem_client=mem,  # type: ignore[arg-type]
+    )
+    await capture_slack_message(
+        role="assistant",
+        content="answer",
+        channel_id="C1",
+        user_id="UBOT",
+        ts="102.1",
+        thread_ts="100.1",
+        web_client=None,
+        mem_client=mem,  # type: ignore[arg-type]
+    )
+
+    assert [item["thread_id"] for item in mem.appends] == [
+        "slack:C1:100.1",
+        "slack:C1:100.1",
+    ]
+    assert [item["message"]["role"] for item in mem.appends] == [
+        "user",
+        "assistant",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_different_slack_threads_use_different_mem_threads() -> None:
     mem = FakeMemClient()
     for thread_ts in ("100.1", "200.1"):
         await capture_to_mem(
@@ -118,7 +177,10 @@ async def test_different_slack_threads_share_channel_thread() -> None:
             mem_client=mem,  # type: ignore[arg-type]
         )
 
-    assert [item["thread_id"] for item in mem.appends] == ["slack:C1", "slack:C1"]
+    assert [item["thread_id"] for item in mem.appends] == [
+        "slack:C1:100.1",
+        "slack:C1:200.1",
+    ]
     assert [item["message"]["metadata"]["slack_thread_ts"] for item in mem.appends] == [
         "100.1",
         "200.1",
@@ -133,6 +195,7 @@ async def test_existing_channel_thread_uses_single_append_request() -> None:
     await mem.append_message(
         thread_id="slack:C1",
         title="Slack C1",
+        thread_metadata={"slack_channel_id": "C1"},
         message=message,
         idempotency_key="slack:C1:100.1",
     )
@@ -151,28 +214,46 @@ async def test_existing_channel_thread_uses_single_append_request() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_channel_thread_is_created_with_first_message() -> None:
-    mem = RecordingMemClient([None, {"thread": {"thread_id": "slack:C1"}}])
-    message = {"role": "user", "content": "hello"}
+async def test_missing_slack_thread_is_created_with_enriched_root() -> None:
+    mem = RecordingMemClient([None, {"thread": {"thread_id": "slack:C1:100.1"}}])
 
-    await mem.append_message(
-        thread_id="slack:C1",
-        title="Slack C1",
-        message=message,
-        idempotency_key="slack:C1:100.1",
-    )
+    async def resolve_mentions(text: str) -> str:
+        assert text == "<@UBOT> thread root"
+        return "@nowledge thread root"
 
-    assert mem.posts[1] == (
-        "/threads",
-        {
-            "thread_id": "slack:C1",
-            "title": "Slack C1",
-            "messages": [message],
-            "source": "slack",
-            "metadata": {"slack_channel_id": "C1"},
+    await capture_to_mem(
+        event={
+            "text": "thread reply",
+            "channel": "C1",
+            "user": "U1",
+            "ts": "101.1",
+            "thread_ts": "100.1",
         },
-        False,
+        web_client=FakeThreadWebClient(),
+        mem_client=mem,
+        resolve_mentions=resolve_mentions,
     )
+
+    create_path, create_payload, not_found_ok = mem.posts[1]
+    assert create_path == "/threads"
+    assert not not_found_ok
+    assert create_payload["thread_id"] == "slack:C1:100.1"
+    assert create_payload["title"] == "Slack C1 thread 100.1"
+    assert create_payload["source"] == "slack"
+    assert create_payload["metadata"] == {
+        "slack_channel_id": "C1",
+        "slack_thread_ts": "100.1",
+    }
+    assert [message["content"] for message in create_payload["messages"]] == [
+        "@nowledge thread root",
+        "thread reply",
+    ]
+    assert [message["role"] for message in create_payload["messages"]] == [
+        "user",
+        "user",
+    ]
+    assert create_payload["messages"][0]["metadata"]["source_message_id"] == "100.1"
+    assert create_payload["messages"][1]["metadata"]["source_message_id"] == "101.1"
 
 
 @pytest.mark.asyncio
