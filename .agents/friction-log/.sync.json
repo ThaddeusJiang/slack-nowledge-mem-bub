@@ -1,0 +1,13 @@
+{
+  "mirrors": [
+    {
+      "issue": "ThaddeusJiang/slack-nowledge-mem-bub#1",
+      "path": ".agents/friction-log/20260817234738-uv-build-warns/friction.md"
+    },
+    {
+      "issue": "ThaddeusJiang/slack-nowledge-mem-bub#2",
+      "path": ".agents/friction-log/20260817235204-package-version-differs/friction.md"
+    }
+  ],
+  "version": 1
+}
