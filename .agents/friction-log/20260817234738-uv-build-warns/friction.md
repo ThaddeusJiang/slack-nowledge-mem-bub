@@ -1,6 +1,7 @@
 ---
 title: 'uv build warns that installed uv is outside the declared uv-build range'
 severity: 'minor'
+issue: 'ThaddeusJiang/slack-nowledge-mem-bub#1'
 ---
 
 ## Expected Behavior

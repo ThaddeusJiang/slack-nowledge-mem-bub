@@ -1,6 +1,7 @@
 ---
 title: 'Package version differs between pyproject.toml and bub_slack.__version__'
 severity: 'minor'
+issue: 'ThaddeusJiang/slack-nowledge-mem-bub#2'
 ---
 
 ## Expected Behavior
