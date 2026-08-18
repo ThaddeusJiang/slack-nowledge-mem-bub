@@ -5,6 +5,7 @@ import importlib.metadata
 
 from bub.configure import CONFIG_MAP
 
+import bub_slack
 import bub_slack.plugin as plugin_mod
 from bub_slack.channel import SlackChannel
 
@@ -38,6 +39,10 @@ def test_importing_plugin_registers_slack_settings() -> None:
     # CONFIG_MAP maps section name -> list of registered settings classes.
     classes = registered if isinstance(registered, list) else [registered]
     assert any(c.__name__ == "SlackSettings" for c in classes)
+
+
+def test_runtime_version_matches_distribution_metadata() -> None:
+    assert bub_slack.__version__ == importlib.metadata.version("bub-slack")
 
 
 def test_entry_point_registered() -> None:
