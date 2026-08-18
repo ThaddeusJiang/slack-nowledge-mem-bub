@@ -1,3 +1,4 @@
+# Derived from bub-slack in bubbuild/bub-contrib and modified for Nowledge Mem capture.
 """Slack Socket Mode channel adapter for Bub.
 
 Socket Mode lets the bot receive events over a WebSocket (the ``xapp-`` token)

@@ -1,5 +1,7 @@
 # slack-nowledge-mem-bub
 
+> This project derives from `bub-slack` in `bubbuild/bub-contrib` and modifies it for passive Nowledge Mem capture.
+
 Slack Team Memory for [Bub](https://github.com/bubbuild/bub) and [Nowledge Mem](https://mem.nowledge.co/).
 
 The project gives Slack two paths:

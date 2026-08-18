@@ -1,3 +1,4 @@
+# Derived from bub-slack in bubbuild/bub-contrib and modified for Nowledge Mem capture.
 [project]
 name = "bub-slack"
 version = "0.1.4"
@@ -8,6 +9,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
     "bub>=0.3.0a1",
     "nowledge-mem-bub>=0.7.3",

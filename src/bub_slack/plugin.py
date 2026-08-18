@@ -1,3 +1,4 @@
+# Derived from bub-slack in bubbuild/bub-contrib and modified for Nowledge Mem capture.
 """Bub plugin entry point for the Slack channel.
 
 Registered under the ``bub`` entry-point group as ``slack = "bub_slack.plugin"``.

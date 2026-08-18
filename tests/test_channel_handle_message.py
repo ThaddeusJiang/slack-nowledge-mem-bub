@@ -1,3 +1,4 @@
+# Derived from bub-slack in bubbuild/bub-contrib and modified for this project.
 from __future__ import annotations
 
 from typing import Any

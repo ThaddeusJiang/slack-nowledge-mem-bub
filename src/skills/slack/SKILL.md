@@ -1,4 +1,5 @@
 ---
+# Derived from bub-slack in bubbuild/bub-contrib and modified for this project.
 name: slack
 description: |
   Slack skill for proactive outbound Slack communication: posting a message to a
