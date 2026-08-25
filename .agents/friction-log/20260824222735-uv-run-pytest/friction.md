@@ -1,6 +1,7 @@
 ---
 title: 'uv run pytest fails after repository path changes'
 severity: 'minor'
+issue: 'ThaddeusJiang/slack-nowledge-mem-bub#6'
 ---
 
 ## Expected Behavior
