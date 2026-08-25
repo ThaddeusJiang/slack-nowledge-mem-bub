@@ -7,10 +7,10 @@ description = "Install project dependencies"
 run = "uv sync"
 
 [tasks.login]
-description = "Log in to OpenAI with ChatGPT OAuth"
+description = "Log in to a provider through Bub"
 depends = ["setup"]
 raw_args = true
-run = "uv run python -m bub login openai"
+run = "uv run python -m bub login"
 
 [tasks.dev]
 description = "Start the Slack gateway"

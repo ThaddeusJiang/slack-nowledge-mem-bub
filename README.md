@@ -52,10 +52,10 @@ BUB_MODEL=openai:gpt-5.3-codex
 BUB_MAX_STEPS=4
 ```
 
-Log in through the browser and leave `BUB_API_KEY` unset:
+The login task delegates provider authentication to Bub. For OpenAI, log in through the browser and leave `BUB_API_KEY` unset:
 
 ```bash
-mise login
+mise login openai
 ```
 
 For a model provider that uses an API key instead, set the provider's required key, such as `OPENAI_API_KEY`.
