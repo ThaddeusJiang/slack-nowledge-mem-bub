@@ -268,7 +268,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.10.0" },
-    { name = "bub", specifier = ">=0.3.0a1" },
+    { name = "bub", specifier = ">=0.4.2" },
     { name = "loguru" },
     { name = "nowledge-mem-bub", specifier = ">=0.7.3" },
     { name = "pydantic", specifier = ">=2" },

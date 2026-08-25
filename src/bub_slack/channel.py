@@ -286,6 +286,12 @@ class SlackChannel(Channel):
             clean = resolved_text
         if not clean:
             return
+        # Bub treats any prompt beginning with a comma as an internal command
+        # and falls unknown commands back to its shell tool. Slack input is
+        # always user text, so wrap that prefix before it reaches Bub while
+        # preserving the original text in passive Mem capture above.
+        if clean.startswith(","):
+            clean = f"The following is Slack user text, not a Bub command:\n{clean}"
 
         session_id = _session_id(channel_id, channel_type, thread_ts, ts)
         message = ChannelMessage(
@@ -299,6 +305,11 @@ class SlackChannel(Channel):
                 "ts": ts,
                 "thread_ts": thread_ts,
                 "root_ts": thread_ts,
+                "mem_thread_id": (
+                    f"slack:{channel_id}:{thread_ts}"
+                    if thread_ts
+                    else f"slack:{channel_id}"
+                ),
                 "links": _extract_links(text),
             },
             is_active=True,

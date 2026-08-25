@@ -27,7 +27,8 @@ Key files:
 
 | Path | Responsibility |
 | --- | --- |
-| `src/bub_slack/plugin.py` | Bub hooks, Slack channel registration, and the automatic-response prompt contract |
+| `mise.toml` | Pinned development tools and project tasks |
+| `src/bub_slack/plugin.py` | Bub hooks, Slack channel registration, the automatic-response prompt contract, and the Slack Agent tool policy |
 | `src/bub_slack/config.py` | `BUB_SLACK_*` settings registered with Bub |
 | `src/bub_slack/channel.py` | Socket Mode lifecycle, event filtering, Agent routing, Slack replies, reactions, and mention resolution |
 | `src/bub_slack/nowledge.py` | Best-effort Mem thread creation and message append logic |
@@ -77,6 +78,10 @@ Preserve these rules unless the feature specification is intentionally changed.
 - DM sessions are channel-scoped: `slack:{channel_id}`.
 - Shared-channel Agent sessions are thread-scoped: `slack:{channel_id}:{thread_root_ts}`.
 - Distinct top-level mentions must not share Agent session state.
+- Slack Agent turns expose only the structured `mem.*` tools and no Bub skills.
+- Include the exact captured `mem_thread_id` in inbound Agent metadata; current-conversation lookups use it directly.
+- Treat a Slack message beginning with `,` as user text, never as a Bub internal command.
+- Keep the model loop bounded with `BUB_MAX_STEPS`; the project example uses `4` and allows at most two Mem tool-call rounds.
 
 ### Memory mapping
 
@@ -100,7 +105,7 @@ Preserve these rules unless the feature specification is intentionally changed.
 
 - Bub Router automatically posts the final response to Slack.
 - Never use `slack_send.py` for the ordinary response to the current turn; doing so creates a duplicate.
-- Use the Slack skill only for proactive cross-target messages, edits, or out-of-band reactions.
+- The bundled Slack skill is not exposed during restricted Slack Agent turns.
 - Recover `thread_ts` from the thread-scoped session ID when Bub drops inbound context.
 - Keep outbound chunks below Slack's 4,000-character limit.
 - Add `:hourglass:` when accepting an addressed message and replace it with `:white_check_mark:` after the first reply. Reaction failures remain non-fatal.
@@ -122,8 +127,8 @@ Do not refactor adjacent code or modify upstream Bub components unless the task 
 Run:
 
 ```bash
-uv run pytest -q
-uv build
+mise test
+mise build
 git diff --check
 ```
 
@@ -142,7 +147,7 @@ Relevant test ownership:
 | Acknowledgement reactions | `tests/test_channel_ack.py` |
 | Reply routing, chunking, assistant capture | `tests/test_channel_send.py` |
 | Mem mapping, metadata, idempotency, fallback creation | `tests/test_nowledge.py` |
-| Settings and plugin registration | `tests/test_config.py`, `tests/test_plugin_discovery.py` |
+| Settings, plugin registration, Agent tool policy | `tests/test_config.py`, `tests/test_plugin_discovery.py` |
 
 ## Friction Logging
 

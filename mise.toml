@@ -1,0 +1,28 @@
+[tools]
+python = "3.14.5"
+uv = "0.12.3"
+
+[tasks.setup]
+description = "Install project dependencies"
+run = "uv sync"
+
+[tasks.dev]
+description = "Start the Slack gateway"
+depends = ["setup"]
+raw = true
+run = "exec uv run python -m bub gateway --enable-channel slack"
+
+[tasks.hooks]
+description = "Show loaded Bub hooks"
+depends = ["setup"]
+run = "uv run python -m bub hooks"
+
+[tasks.test]
+description = "Run the test suite"
+depends = ["setup"]
+run = "uv run python -m pytest -q"
+
+[tasks.build]
+description = "Build the package"
+depends = ["setup"]
+run = "uv build"
