@@ -5,8 +5,16 @@
       "path": ".agents/friction-log/20260817234738-uv-build-warns/friction.md"
     },
     {
+      "issue": "ThaddeusJiang/slack-nowledge-mem-bub#12",
+      "path": ".agents/friction-log/20260825180323-mise-login-task/friction.md"
+    },
+    {
       "issue": "ThaddeusJiang/slack-nowledge-mem-bub#2",
       "path": ".agents/friction-log/20260817235204-package-version-differs/friction.md"
+    },
+    {
+      "issue": "ThaddeusJiang/slack-nowledge-mem-bub#6",
+      "path": ".agents/friction-log/20260824222735-uv-run-pytest/friction.md"
     }
   ],
   "version": 1
