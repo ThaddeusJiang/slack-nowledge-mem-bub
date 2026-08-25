@@ -2,7 +2,6 @@
 title: 'fix: prevent exception diagnostics from exposing local secrets'
 severity: 'major'
 target: 'bubbuild/bub'
-issue: 'bubbuild/bub#292'
 ---
 
 ## What happened
