@@ -15,12 +15,12 @@ Team messages are captured without calling an LLM. The Agent runs only for direc
 
 ## AI-assisted setup
 
-Give an AI agent the public
-[`slack-nowledge-mem-bub-setup` skill](https://raw.githubusercontent.com/ThaddeusJiang/slack-nowledge-mem-bub/main/.agents/skills/slack-nowledge-mem-bub-setup/SKILL.md)
-and ask it to configure or deploy the project. The skill can start before this
-repository is cloned: it verifies an existing checkout or acquires the public
-source, then guides Slack App configuration, secret handling, startup, and
-end-to-end acceptance.
+Copy this prompt into an AI agent:
+
+```text
+Read and follow this skill to configure or deploy slack-nowledge-mem-bub:
+https://raw.githubusercontent.com/ThaddeusJiang/slack-nowledge-mem-bub/main/.agents/skills/slack-nowledge-mem-bub-setup/SKILL.md
+```
 
 ## Requirements
 
