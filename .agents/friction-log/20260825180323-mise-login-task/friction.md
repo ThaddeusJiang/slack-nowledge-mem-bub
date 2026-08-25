@@ -1,6 +1,7 @@
 ---
 title: 'mise login task uses unsupported raw_args field'
 severity: 'major'
+issue: 'ThaddeusJiang/slack-nowledge-mem-bub#12'
 ---
 
 ## Expected Behavior
