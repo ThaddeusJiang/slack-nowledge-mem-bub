@@ -26,8 +26,20 @@ NMEM_SESSION_DIGEST=0
 BUB_MAX_STEPS=4
 ```
 
-Also configure the model provider required by Bub, for example
-`OPENAI_API_KEY`. A remote Mem service additionally requires:
+Also configure a Bub model and one authentication path. For ChatGPT OAuth, set
+a compatible OpenAI model, leave `BUB_API_KEY` unset, and authenticate through
+Bub:
+
+```env
+BUB_MODEL=openai:gpt-5.3-codex
+```
+
+```bash
+mise login openai
+```
+
+For API-key authentication, configure the key required by the selected
+provider, such as `OPENAI_API_KEY`. A remote Mem service additionally requires:
 
 ```env
 NMEM_API_URL=https://your-nowledge-mem-server
@@ -60,7 +72,8 @@ mise hooks
 ```
 
 `mise hooks` must show `slack` under `provide_channels` and `nowledge_mem` under
-the memory-related hooks. If the model is not configured, run:
+the memory-related hooks. Use interactive onboarding only when other Bub
+settings still need configuration:
 
 ```bash
 mise exec -- uv run python -m bub onboard
