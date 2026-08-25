@@ -43,14 +43,22 @@ Copy the environment template:
 cp .env.example .env
 ```
 
-Set both Slack tokens and the API key required by your Bub model provider. For example:
+Set both Slack tokens and configure the Bub model. To use a ChatGPT subscription through OpenAI OAuth:
 
 ```env
 BUB_SLACK_BOT_TOKEN=xoxb-...
 BUB_SLACK_APP_TOKEN=xapp-...
+BUB_MODEL=openai:gpt-5.3-codex
 BUB_MAX_STEPS=4
-OPENAI_API_KEY=...
 ```
+
+The login task delegates provider authentication to Bub. For OpenAI, log in through the browser and leave `BUB_API_KEY` unset:
+
+```bash
+mise login openai
+```
+
+For a model provider that uses an API key instead, set the provider's required key, such as `OPENAI_API_KEY`.
 
 The local Nowledge Mem API defaults to `http://127.0.0.1:14242`. For a remote service, also set:
 
