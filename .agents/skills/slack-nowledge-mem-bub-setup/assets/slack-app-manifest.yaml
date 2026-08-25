@@ -1,0 +1,37 @@
+_metadata:
+  major_version: 2
+  minor_version: 1
+
+display_information:
+  name: Nowledge Mem
+  description: Capture Slack conversations in Nowledge Mem and answer addressed messages.
+  background_color: "#4A154B"
+
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: Nowledge Mem
+    always_online: false
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - channels:history
+      - groups:history
+      - im:history
+      - reactions:write
+      - users:read
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+      - message.im
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

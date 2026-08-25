@@ -13,6 +13,15 @@ Message to @Bot  -> Nowledge Mem -> Bub Agent -> Slack
 
 Team messages are captured without calling an LLM. The Agent runs only for direct messages, explicit mentions, and follow-ups in a thread it has joined.
 
+## AI-assisted setup
+
+Give an AI agent the public
+[`slack-nowledge-mem-bub-setup` skill](https://raw.githubusercontent.com/ThaddeusJiang/slack-nowledge-mem-bub/main/.agents/skills/slack-nowledge-mem-bub-setup/SKILL.md)
+and ask it to configure or deploy the project. The skill can start before this
+repository is cloned: it verifies an existing checkout or acquires the public
+source, then guides Slack App configuration, secret handling, startup, and
+end-to-end acceptance.
+
 ## Requirements
 
 - [mise](https://mise.jdx.dev/)
