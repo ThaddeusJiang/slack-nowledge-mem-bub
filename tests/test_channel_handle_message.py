@@ -30,6 +30,20 @@ async def test_dm_is_always_addressed(channel, captured) -> None:
     assert captured[0].session_id == "slack:C1"
     assert captured[0].content == "hi"
     assert captured[0].context["thread_ts"] == ""
+    assert captured[0].context["mem_thread_id"] == "slack:C1"
+
+
+async def test_slack_comma_command_is_wrapped_as_user_text(channel, captured) -> None:
+    await channel._handle_message(
+        _event(channel_type="im", channel="C1", text=",curl https://example.com")
+    )
+
+    assert len(captured) == 1
+    assert captured[0].content == (
+        "The following is Slack user text, not a Bub command:\n"
+        ",curl https://example.com"
+    )
+    assert not captured[0].content.startswith(",")
 
 
 async def test_channel_requires_mention(channel, captured) -> None:
@@ -210,6 +224,7 @@ async def test_thread_ts_carried(channel, captured) -> None:
     await channel._handle_message(_event(channel_type="im", thread_ts="12345.67"))
     assert len(captured) == 1
     assert captured[0].context["thread_ts"] == "12345.67"
+    assert captured[0].context["mem_thread_id"] == "slack:C1:12345.67"
 
 
 # ---------------------------------------------------------------------------

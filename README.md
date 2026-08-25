@@ -15,25 +15,26 @@ Team messages are captured without calling an LLM. The Agent runs only for direc
 
 ## Requirements
 
-- Python 3.12+
+- [mise](https://mise.jdx.dev/)
 - A Slack app with Socket Mode enabled
 - A running Nowledge Mem service
 - A model provider supported by Bub
 
 ## Setup
 
-Clone the project and install its dependencies:
+Clone the project and install its pinned Python and `uv` versions, then sync the project dependencies:
 
 ```bash
 git clone https://github.com/ThaddeusJiang/slack-nowledge-mem-bub.git
 cd slack-nowledge-mem-bub
-uv sync
+mise install
+mise setup
 ```
 
 Confirm that Nowledge Mem is available:
 
 ```bash
-uv run nmem status
+mise exec -- uv run nmem status
 ```
 
 Copy the environment template:
@@ -47,6 +48,7 @@ Set both Slack tokens and the API key required by your Bub model provider. For e
 ```env
 BUB_SLACK_BOT_TOKEN=xoxb-...
 BUB_SLACK_APP_TOKEN=xapp-...
+BUB_MAX_STEPS=4
 OPENAI_API_KEY=...
 ```
 
@@ -69,7 +71,7 @@ Slack messages are already captured directly. Disabling the session digest preve
 Run Bub onboarding if the model or other Bub settings are not configured yet:
 
 ```bash
-uv run bub onboard
+mise exec -- uv run python -m bub onboard
 ```
 
 ## Slack app
@@ -120,20 +122,24 @@ Invite the bot to every shared channel it should capture.
 Check that both plugins are loaded:
 
 ```bash
-uv run bub hooks
+mise hooks
 ```
 
 The output should include `slack` under `provide_channels` and `nowledge_mem` under the memory-related hooks.
 
-Start the Slack gateway:
+Start the Slack gateway in the foreground:
 
 ```bash
-uv run bub gateway
+mise dev
 ```
+
+The `dev` task runs dependency setup first and forwards terminal signals to the gateway. Use `Ctrl-C` to stop it.
 
 No public HTTP endpoint is required. Slack events arrive through Socket Mode.
 
 For a process or Kubernetes readiness probe, set `BUB_HEALTH_FILE` to a writable path. The gateway creates the file after Socket Mode connects and removes it on shutdown.
+
+Other development tasks are available through `mise tasks`; the common checks are `mise test` and `mise build`.
 
 ## Use
 
@@ -156,8 +162,8 @@ slack:{channel_id}:{thread_ts}
 Inspect either thread with:
 
 ```bash
-uv run nmem t show slack:{channel_id}
-uv run nmem t show slack:{channel_id}:{thread_ts}
+mise exec -- uv run nmem t show slack:{channel_id}
+mise exec -- uv run nmem t show slack:{channel_id}:{thread_ts}
 ```
 
 ### Ask the Agent
@@ -167,6 +173,10 @@ uv run nmem t show slack:{channel_id}:{thread_ts}
 - After the bot replies in a Slack thread, continue replying there without mentioning it again.
 
 An addressed message receives `:hourglass:` while it is being processed and `:white_check_mark:` after the first response.
+
+Slack Agent turns expose only the structured `mem.*` tools supplied by `nowledge-mem-bub`. They do not expose shell, file, web, skill, or subagent tools. A Slack message beginning with `,` is treated as user text instead of a Bub internal command. `BUB_MAX_STEPS=4` gives a turn enough room for two Mem tool-call rounds followed by a final response while keeping the loop bounded.
+
+This policy prevents arbitrary Agent network tools; it does not make the gateway offline. Slack, a hosted model provider, and a remote Mem service still require their respective network connections.
 
 ### Restrict access
 

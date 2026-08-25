@@ -11,7 +11,7 @@ requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
-    "bub>=0.3.0a1",
+    "bub>=0.4.2",
     "nowledge-mem-bub>=0.7.3",
     "slack-sdk>=3.30.0",
     "aiohttp>=3.10.0",

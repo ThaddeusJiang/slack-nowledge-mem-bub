@@ -83,6 +83,18 @@ The active-thread set is in-memory state. After a gateway restart, an existing S
 
 DMs keep continuous channel-scoped Agent state. Shared-channel threads and separate top-level mentions remain isolated.
 
+### Agent execution policy
+
+Slack Agent turns expose only the structured `mem.*` tools registered by `nowledge-mem-bub`. Shell, file, web, skill, tape, and subagent tools are not supplied to the model. The Mem tools invoke the `nmem` CLI without routing commands through Bub's shell tool.
+
+Bub normally treats prompts beginning with `,` as internal commands and falls unknown commands back to its shell tool. Slack messages beginning with `,` must instead be wrapped as ordinary user text before entering Bub. Passive capture keeps the original Slack text.
+
+The inbound Agent metadata includes `mem_thread_id`, which identifies the exact Mem thread that received the Slack message. For questions about the current Slack channel, thread, or conversation, the Agent uses `mem.thread` with this ID instead of searching to rediscover it.
+
+The example runtime configuration sets `BUB_MAX_STEPS=4`. This limits one Agent turn to four model-loop steps; operators may override it deliberately. The Slack prompt allows at most two Mem tool-call rounds before the Agent must answer from available evidence or state that the evidence is insufficient.
+
+The tool policy prevents arbitrary Agent web access. It does not remove the network connections required by Slack Socket Mode, the configured model provider, or a remote Mem service.
+
 ## Memory model
 
 ### Channel thread
@@ -236,3 +248,15 @@ Given a permalink, mention, reaction, or Mem failure:
 - the Socket Mode listener remains operational;
 - an otherwise addressed message still reaches the Agent;
 - a generated response can still be posted to Slack.
+
+### Restricted Agent execution
+
+Given an addressed Slack message:
+
+- only `mem.*` tools are supplied to the model;
+- no Bub skills are supplied;
+- shell, file, web, tape, and subagent tools cannot be invoked by the model;
+- a leading `,` is treated as user text rather than an internal Bub command;
+- inbound metadata identifies the captured conversation with `mem_thread_id`;
+- current-conversation lookups use that ID directly instead of discovery search;
+- the configured model loop stops after at most `BUB_MAX_STEPS` steps.
