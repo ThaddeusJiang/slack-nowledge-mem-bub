@@ -6,6 +6,12 @@ uv = "0.12.3"
 description = "Install project dependencies"
 run = "uv sync"
 
+[tasks.login]
+description = "Log in to OpenAI with ChatGPT OAuth"
+depends = ["setup"]
+raw_args = true
+run = "uv run python -m bub login openai"
+
 [tasks.dev]
 description = "Start the Slack gateway"
 depends = ["setup"]
