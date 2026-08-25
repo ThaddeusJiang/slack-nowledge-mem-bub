@@ -1,30 +1,26 @@
 ---
-title: 'Bub exception traceback exposes API key prefix from AgentSettings repr'
+title: 'fix: prevent exception diagnostics from exposing local secrets'
 severity: 'major'
 target: 'bubbuild/bub'
+issue: 'bubbuild/bub#292'
 ---
 
 ## What happened
 
-A `max_steps_reached` exception logged by Bub included the local `Agent` object and `AgentSettings` in Loguru traceback locals. The settings representation exposed a 28-character prefix of the configured model-provider API key in a world-readable `/tmp` gateway log.
+Bub configures Loguru sinks with the default `diagnose=True`. When an exception is logged, Loguru can render stack-frame local variables. An Agent failure therefore exposed part of a configured provider API key through the `AgentSettings` representation in a redirected gateway log.
 
-## Expected
+## Expected behavior
 
-Exception diagnostics must redact secret settings such as `api_key` before rendering locals.
+Bub-owned log sinks should preserve the traceback and error message without rendering local variable values.
 
 ## Reproduction
 
 1. Configure Bub with a model-provider API key.
-2. Set a low `BUB_MAX_STEPS`.
-3. Run `python -m bub gateway` and trigger a turn that exhausts the model loop.
-4. Inspect the `Error processing inbound message` traceback.
+2. Run the gateway and trigger an Agent exception, such as exhausting a low `BUB_MAX_STEPS` limit.
+3. Inspect the `Error processing inbound message` traceback.
 
-## Environment
+## Proposed fix
 
-- Bub 0.4.2
-- Python 3.14
-- macOS
+Pass `diagnose=False` to every sink registered by `_instrument_bub()`. This disables local-variable diagnostics for both stderr and Logfire without changing exception propagation or ordinary logging.
 
-## Impact
-
-Logs can disclose a substantial API-key prefix to other local users or log collectors.
+A focused regression test can assert that every Bub-owned sink explicitly disables diagnostics.
