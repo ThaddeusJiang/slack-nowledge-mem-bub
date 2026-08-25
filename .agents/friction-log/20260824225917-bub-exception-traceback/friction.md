@@ -2,6 +2,7 @@
 title: 'Bub exception traceback exposes API key prefix from AgentSettings repr'
 severity: 'major'
 target: 'bubbuild/bub'
+issue: 'bubbuild/bub#292'
 ---
 
 ## What happened
