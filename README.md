@@ -152,6 +152,15 @@ mise dev
 
 The `dev` task runs dependency setup first and forwards terminal signals to the gateway. Use `Ctrl-C` to stop it.
 
+Or start it in the background and stop it later:
+
+```bash
+mise start
+mise stop
+```
+
+Background output is appended to `logs/slack-gateway.log`; follow it with `mise logs`.
+
 No public HTTP endpoint is required. Slack events arrive through Socket Mode.
 
 For a process or Kubernetes readiness probe, set `BUB_HEALTH_FILE` to a writable path. The gateway creates the file after Socket Mode connects and removes it on shutdown.

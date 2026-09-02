@@ -13,10 +13,46 @@ usage = 'arg "<provider>" help="Provider to authenticate"'
 run = 'uv run python -m bub login "$usage_provider"'
 
 [tasks.dev]
-description = "Start the Slack gateway"
+description = "Start the Slack gateway in the foreground"
 depends = ["setup"]
 raw = true
 run = "exec uv run python -m bub gateway --enable-channel slack"
+
+[tasks.start]
+description = "Start the Slack gateway in the background"
+depends = ["setup"]
+run = """
+mkdir -p .run logs
+if [ -f .run/slack-gateway.pid ] && kill -0 "$(cat .run/slack-gateway.pid)" 2>/dev/null; then
+  echo "Slack gateway is already running with pid $(cat .run/slack-gateway.pid)"
+  exit 0
+fi
+nohup uv run python -m bub gateway --enable-channel slack >> logs/slack-gateway.log 2>&1 &
+echo $! > .run/slack-gateway.pid
+echo "Started Slack gateway with pid $(cat .run/slack-gateway.pid)"
+"""
+
+[tasks.stop]
+description = "Stop the background Slack gateway"
+run = """
+if [ ! -f .run/slack-gateway.pid ]; then
+  echo "Slack gateway pid file not found"
+  exit 0
+fi
+pid=$(cat .run/slack-gateway.pid)
+if kill -0 "$pid" 2>/dev/null; then
+  kill "$pid"
+  echo "Stopped Slack gateway with pid $pid"
+else
+  echo "Slack gateway pid $pid is not running"
+fi
+rm -f .run/slack-gateway.pid
+"""
+
+[tasks.logs]
+description = "Follow the Slack gateway log"
+raw = true
+run = "tail -f logs/slack-gateway.log"
 
 [tasks.hooks]
 description = "Show loaded Bub hooks"
