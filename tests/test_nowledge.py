@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import aiohttp
 import pytest
+from loguru import logger
+from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 from bub_slack.nowledge import (
     NowledgeMemClient,
@@ -292,3 +296,120 @@ def test_append_400_thread_not_found_triggers_create_fallback() -> None:
 def test_slack_ts_to_iso_rejects_invalid_values() -> None:
     assert slack_ts_to_iso("") is None
     assert slack_ts_to_iso("not-a-timestamp") is None
+
+
+class _RaisingPost:
+    def __init__(self, exc: BaseException) -> None:
+        self.exc = exc
+
+    async def __aenter__(self) -> Any:
+        raise self.exc
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+def _http_error_with_headers(headers: dict[str, str]) -> aiohttp.ClientResponseError:
+    request_info = aiohttp.RequestInfo(
+        url=URL("http://mem.local/threads"),
+        method="POST",
+        headers=CIMultiDictProxy(CIMultiDict(headers)),
+        real_url=URL("http://mem.local/threads"),
+    )
+    return aiohttp.ClientResponseError(
+        request_info, (), status=500, message="Internal Server Error"
+    )
+
+
+def _capture_logs() -> tuple[list[str], int]:
+    records: list[str] = []
+    handler_id = logger.add(lambda message: records.append(str(message)), level="DEBUG")
+    return records, handler_id
+
+
+@pytest.mark.asyncio
+async def test_http_error_logs_do_not_leak_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = "nmem-secret-sentinel-123"
+    monkeypatch.setenv("NMEM_API_KEY", sentinel)
+    exc = _http_error_with_headers(
+        {"Authorization": f"Bearer {sentinel}", "X-NMEM-API-Key": sentinel}
+    )
+    assert sentinel in repr(exc)
+    monkeypatch.setattr(
+        aiohttp.ClientSession, "post", lambda self, *a, **kw: _RaisingPost(exc)
+    )
+    records, handler_id = _capture_logs()
+    try:
+        await capture_to_mem(
+            event={"text": "hello", "channel": "C1", "ts": "100.1"},
+            web_client=None,
+            mem_client=NowledgeMemClient(),
+        )
+    finally:
+        logger.remove(handler_id)
+
+    text = "\n".join(records)
+    assert sentinel not in text
+    assert "Authorization" not in text
+    assert "X-NMEM-API-Key" not in text
+    assert "operation=append status=500 reason=Internal Server Error" in text
+    assert "Traceback" not in text
+
+
+@pytest.mark.asyncio
+async def test_timeout_logs_concise_warning_without_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        aiohttp.ClientSession,
+        "post",
+        lambda self, *a, **kw: _RaisingPost(TimeoutError()),
+    )
+    records, handler_id = _capture_logs()
+    try:
+        await capture_to_mem(
+            event={
+                "text": "hello",
+                "channel": "C1",
+                "ts": "100.1",
+                "thread_ts": "99.9",
+            },
+            web_client=None,
+            mem_client=NowledgeMemClient(),
+        )
+    finally:
+        logger.remove(handler_id)
+
+    text = "\n".join(records)
+    assert "operation=append status=None reason=timeout thread=slack:C1:99.9" in text
+    assert "Traceback" not in text
+
+
+@pytest.mark.asyncio
+async def test_unexpected_failure_redacts_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = "nmem-secret-sentinel-456"
+    monkeypatch.setenv("NMEM_API_KEY", sentinel)
+    mem = FakeMemClient()
+
+    async def boom(**kwargs: Any) -> None:
+        raise RuntimeError(f"unexpected {sentinel}")
+
+    mem.append_message = boom  # type: ignore[method-assign]
+    records, handler_id = _capture_logs()
+    try:
+        await capture_to_mem(
+            event={"text": "hello", "channel": "C1", "ts": "100.1"},
+            web_client=None,
+            mem_client=mem,  # type: ignore[arg-type]
+        )
+    finally:
+        logger.remove(handler_id)
+
+    text = "\n".join(records)
+    assert sentinel not in text
+    assert "error_type=RuntimeError error=unexpected <redacted>" in text
+    assert "Traceback" in text

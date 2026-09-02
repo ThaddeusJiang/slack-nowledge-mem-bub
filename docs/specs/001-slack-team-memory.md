@@ -162,7 +162,7 @@ Each captured message contains:
 
 The append request enables deduplication and includes the Mem thread ID and Slack message `ts` in its idempotency key.
 
-If append reports that the Mem thread does not exist, the integration creates it and supplies the initial messages. Other API failures are logged and swallowed by the capture boundary.
+If append reports that the Mem thread does not exist, the integration creates it and supplies the initial messages. Other API failures are logged and swallowed by the capture boundary. HTTP and timeout failures produce a single concise warning (operation, status, reason, Mem thread ID) without a traceback; request headers and the Mem API key must never appear in any log output.
 
 ## Slack response
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import traceback
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -10,6 +11,16 @@ from urllib.parse import quote
 
 import aiohttp
 from loguru import logger
+
+
+class MemRequestError(Exception):
+    """Expected Mem HTTP or timeout failure without request headers."""
+
+    def __init__(self, *, operation: str, status: int | None, reason: str) -> None:
+        self.operation = operation
+        self.status = status
+        self.reason = reason
+        super().__init__(f"{operation} status={status} reason={reason}")
 
 
 class NowledgeMemClient:
@@ -31,19 +42,33 @@ class NowledgeMemClient:
         # old 10-second budget. Keep connect failures short while allowing the
         # local Mem server enough time to finish a committed write.
         timeout = aiohttp.ClientTimeout(total=30, connect=5)
-        async with (
-            aiohttp.ClientSession(timeout=timeout) as session,
-            session.post(
-                f"{self._api_url}{path}", json=payload, headers=headers
-            ) as response,
-        ):
-            if not_found_ok and response.status in {400, 404}:
-                error = await response.json()
-                if _is_thread_not_found(response.status, error):
-                    return None
-            response.raise_for_status()
-            result = await response.json()
-            return result if isinstance(result, dict) else {}
+        operation = "append" if path.endswith("/append") else "create"
+        try:
+            async with (
+                aiohttp.ClientSession(timeout=timeout) as session,
+                session.post(
+                    f"{self._api_url}{path}", json=payload, headers=headers
+                ) as response,
+            ):
+                if not_found_ok and response.status in {400, 404}:
+                    error = await response.json()
+                    if _is_thread_not_found(response.status, error):
+                        return None
+                response.raise_for_status()
+                result = await response.json()
+                return result if isinstance(result, dict) else {}
+        except aiohttp.ClientResponseError as exc:
+            raise MemRequestError(
+                operation=operation, status=exc.status, reason=exc.message
+            ) from None
+        except TimeoutError:
+            raise MemRequestError(
+                operation=operation, status=None, reason="timeout"
+            ) from None
+        except aiohttp.ClientError as exc:
+            raise MemRequestError(
+                operation=operation, status=None, reason=type(exc).__name__
+            ) from None
 
     async def append_message(
         self,
@@ -247,12 +272,32 @@ async def capture_slack_message(
             idempotency_key=f"{mem_thread_id}:{ts}",
             initial_messages=initial_messages,
         )
-    except Exception as exc:  # noqa: BLE001 — Mem must not break Slack
-        logger.opt(exception=True).warning(
-            "slack.capture failed error_type={} error={!r}",
-            type(exc).__name__,
-            exc,
+    except MemRequestError as exc:
+        logger.warning(
+            "slack.capture failed operation={} status={} reason={} thread={}",
+            exc.operation,
+            exc.status,
+            _redact(exc.reason),
+            mem_thread_id,
         )
+    except Exception as exc:  # noqa: BLE001 — Mem must not break Slack
+        logger.warning(
+            "slack.capture failed error_type={} error={} thread={}",
+            type(exc).__name__,
+            _redact(str(exc)),
+            mem_thread_id,
+        )
+        logger.debug(
+            "slack.capture traceback:\n{}",
+            _redact("".join(traceback.format_exception(exc))),
+        )
+
+
+def _redact(text: str) -> str:
+    api_key = os.getenv("NMEM_API_KEY", "").strip()
+    if api_key:
+        return text.replace(api_key, "<redacted>")
+    return text
 
 
 async def capture_to_mem(
